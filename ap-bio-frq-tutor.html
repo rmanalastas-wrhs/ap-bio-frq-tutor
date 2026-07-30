@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AP Biology FRQ Tutor</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  <!-- React & Babel -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f3f4f6;
+      color: #111827;
+    }
+  </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col">
+  <div id="root" class="flex-1 flex flex-col"></div>
+
+  <script type="text/babel">
+    // ================================
+    // FRONT END CONFIG
+    // ================================
+    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxEWZruZbS-PCCQ4aMEaQ0G14neLqhGN9LLRJecEpMZzQWKxU0nU5bFWXhOWAnZR0poYw/exec";
+
+    // AP Biology Units & Topics (same as your original)
+    const UNITS_DATA = [
+      {
+        id: "1",
+        name: "Unit 1: Chemistry of Life",
+        topics: [
+          "1.1 Structure of Water and Hydrogen Bonding",
+          "1.2 Elements of Life",
+          "1.3 Introduction to Macromolecules",
+          "1.4 Carbohydrates",
+          "1.5 Lipids",
+          "1.6 Nucleic Acids",
+          "1.7 Proteins"
+        ]
+      },
+      {
+        id: "2",
+        name: "Unit 2: Cell Structure and Function",
+        topics: [
+          "2.1 Cell Structure and Function",
+          "2.2 Cell Size",
+          "2.3 Plasma Membrane",
+          "2.4 Membrane Permeability",
+          "2.5 Membrane Transport",
+          "2.6 Facilitated Diffusion",
+          "2.7 Tonicity and Osmoregulation",
+          "2.8 Mechanisms of Transport",
+          "2.9 Cell Compartmentalization",
+          "2.10 Origins of Cell Compartmentalization"
+        ]
+      },
+      {
+        id: "3",
+        name: "Unit 3: Cellular Energetics",
+        topics: [
+          "3.1 Enzymes",
+          "3.2 Environmental Impacts on Enzyme Function",
+          "3.3 Cellular Energy",
+          "3.4 Photosynthesis",
+          "3.5 Cellular Respiration"
+        ]
+      },
+      {
+        id: "4",
+        name: "Unit 4: Cell Communication and Cell Cycle",
+        topics: [
+          "4.1 Cell Communication",
+          "4.2 Introduction to Signal Transduction",
+          "4.3 Signal Transduction",
+          "4.4 Feedback",
+          "4.5 Cell Cycle",
+          "4.6 Regulation of Cell Cycle"
+        ]
+      },
+      {
+        id: "5",
+        name: "Unit 5: Heredity",
+        topics: [
+          "5.1 Meiosis",
+          "5.2 Meiosis and Genetic Diversity",
+          "5.3 Mendelian Genetics",
+          "5.4 Non-Mendelian Genetics",
+          "5.5 Environmental Effects on Phenotype",
+          "5.6 Chromosomal Inheritance"
+        ]
+      },
+      {
+        id: "6",
+        name: "Unit 6: Gene Expression and Regulation",
+        topics: [
+          "6.1 DNA and RNA Structure",
+          "6.2 DNA Replication",
+          "6.3 Transcription and RNA Processing",
+          "6.4 Translation",
+          "6.5 Regulation of Gene Expression",
+          "6.6 Gene Expression and Cell Specialization",
+          "6.7 Mutations",
+          "6.8 Biotechnology"
+        ]
+      },
+      {
+        id: "7",
+        name: "Unit 7: Natural Selection",
+        topics: [
+          "7.1 Introduction to Natural Selection",
+          "7.2 Natural Selection",
+          "7.3 Artificial Selection",
+          "7.4 Population Genetics",
+          "7.5 Hardy-Weinberg Equilibrium",
+          "7.6 Evidence of Evolution",
+          "7.7 Common Ancestry",
+          "7.8 Continuing Evolution",
+          "7.9 Phylogeny",
+          "7.10 Speciation",
+          "7.11 Variations in Populations",
+          "7.12 Origins of Life on Earth"
+        ]
+      },
+      {
+        id: "8",
+        name: "Unit 8: Ecology",
+        topics: [
+          "8.1 Responses to the Environment",
+          "8.2 Energy Flow Through Ecosystems",
+          "8.3 Population Ecology",
+          "8.4 Effect of Density on Populations",
+          "8.5 Community Ecology",
+          "8.6 Biodiversity",
+          "8.7 Disruptions to Ecosystems"
+        ]
+      }
+    ];
+
+    // 11 Official AP CED Task Verbs
+    const TASK_VERBS_11 = [
+      { verb: "Calculate", desc: "Perform mathematical steps to arrive at a final answer, including units." },
+      { verb: "Construct/Draw", desc: "Create a diagram, graph, representation, or model." },
+      { verb: "Describe", desc: "Provide relevant characteristics of a specified topic." },
+      { verb: "Determine", desc: "Decide or conclude after reasoning, observation, or applying." },
+      { verb: "Evaluate", desc: "Judge or determine the significance or importance of information." },
+      { verb: "Explain", desc: "Provide information about how or why a relationship, process, pattern." },
+      { verb: "Identify", desc: "Indicate or provide information about a specified topic." },
+      { verb: "Justify", desc: "Provide evidence to support, qualify, or defend a claim." },
+      { verb: "Make a Claim", desc: "Make an assertion that is based on evidence or knowledge." },
+      { verb: "Predict / Make a Prediction", desc: "Predict causes or effects of a change or

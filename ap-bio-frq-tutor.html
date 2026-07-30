@@ -28,12 +28,10 @@
   <div id="root" class="flex-1 flex flex-col"></div>
 
   <script type="text/babel">
-    // ================================
-    // FRONT END CONFIG
-    // ================================
-    const BACKEND_URL = "https://script.google.com/macros/s/AKfycbxEWZruZbS-PCCQ4aMEaQ0G14neLqhGN9LLRJecEpMZzQWKxU0nU5bFWXhOWAnZR0poYw/exec";
+    // BACKEND URL: your Apps Script web app
+    const BACKEND_URL = "https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec";
 
-    // AP Biology Units & Topics (same as your original)
+    // AP Biology Units & Topics
     const UNITS_DATA = [
       {
         id: "1",
@@ -146,15 +144,233 @@
       }
     ];
 
-    // 11 Official AP CED Task Verbs
-    const TASK_VERBS_11 = [
-      { verb: "Calculate", desc: "Perform mathematical steps to arrive at a final answer, including units." },
-      { verb: "Construct/Draw", desc: "Create a diagram, graph, representation, or model." },
-      { verb: "Describe", desc: "Provide relevant characteristics of a specified topic." },
-      { verb: "Determine", desc: "Decide or conclude after reasoning, observation, or applying." },
-      { verb: "Evaluate", desc: "Judge or determine the significance or importance of information." },
-      { verb: "Explain", desc: "Provide information about how or why a relationship, process, pattern." },
-      { verb: "Identify", desc: "Indicate or provide information about a specified topic." },
-      { verb: "Justify", desc: "Provide evidence to support, qualify, or defend a claim." },
-      { verb: "Make a Claim", desc: "Make an assertion that is based on evidence or knowledge." },
-      { verb: "Predict / Make a Prediction", desc: "Predict causes or effects of a change or
+    // Simple scoring criteria (you can expand later)
+    const DEFAULT_SCORING = [
+      { point: 1, criteria: "Uses correct AP Biology terminology." },
+      { point: 2, criteria: "Addresses all parts of the prompt." },
+      { point: 3, criteria: "Explains underlying mechanisms (how/why)." }
+    ];
+
+    function App() {
+      const [selectedUnitId, setSelectedUnitId] = React.useState("1");
+      const [selectedTopic, setSelectedTopic] = React.useState(UNITS_DATA[0].topics[0]);
+      const [promptText, setPromptText] = React.useState("");
+      const [studentResponse, setStudentResponse] = React.useState("");
+      const [feedback, setFeedback] = React.useState(null);
+      const [isLoading, setIsLoading] = React.useState(false);
+      const [error, setError] = React.useState("");
+
+      const handleUnitChange = (uId) => {
+        setSelectedUnitId(uId);
+        const unit = UNITS_DATA.find(u => u.id === uId);
+        if (unit && unit.topics.length > 0) {
+          setSelectedTopic(unit.topics[0]);
+        }
+      };
+
+      const handleGeneratePrompt = () => {
+        const unit = UNITS_DATA.find(u => u.id === selectedUnitId);
+        const unitName = unit ? unit.name : "";
+        const topicText = selectedTopic || "";
+        const prompt = `AP Biology FRQ – ${unitName}, ${topicText}:\n\n` +
+          `Write a response that describes the relevant biological processes and explains how they relate to the scenario. ` +
+          `Use clear, precise AP Biology terminology and address all parts of the prompt.`;
+        setPromptText(prompt);
+        setFeedback(null);
+        setStudentResponse("");
+      };
+
+      const handleSubmit = async () => {
+        setError("");
+        if (!promptText.trim()) {
+          setError("Generate a prompt first.");
+          return;
+        }
+        if (!studentResponse.trim()) {
+          setError("Write a response before submitting.");
+          return;
+        }
+
+        setIsLoading(true);
+        setFeedback(null);
+
+        try {
+          const body = {
+            context: promptText,
+            prompts: [{ verb: "Explain", text: "Explain the underlying biological mechanisms." }],
+            scoringCriteria: DEFAULT_SCORING,
+            studentResponse: studentResponse
+          };
+
+          const res = await fetch(BACKEND_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          });
+
+          if (!res.ok) {
+            throw new Error("Backend error: " + res.status);
+          }
+
+          const data = await res.json();
+          setFeedback(data);
+        } catch (e) {
+          setError("Error contacting the backend. Check the BACKEND_URL and Apps Script deployment.");
+        } finally {
+          setIsLoading(false);
+        }
+      };
+
+      const currentUnit = UNITS_DATA.find(u => u.id === selectedUnitId);
+
+      return (
+        <div className="flex flex-col min-h-screen">
+          <header className="bg-white border-b border-gray-200 py-4 px-6">
+            <div className="max-w-4xl mx-auto flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold text-xl shadow-sm">
+                  <i className="fa-solid fa-dna"></i>
+                </div>
+                <div>
+                  <h1 className="font-bold text-lg text-gray-900 leading-none">AP Biology FRQ Tutor</h1>
+                  <p className="text-xs text-gray-500 mt-1">Practice FRQ responses and get feedback.</p>
+                </div>
+              </div>
+            </div>
+          </header>
+
+          <main className="flex-1 max-w-4xl w-full mx-auto p-4 sm:p-6 space-y-6">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+              <h2 className="text-base font-bold text-gray-900">Configure Practice Question</h2>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-gray-800 block mb-1">Select AP Biology Unit</label>
+                  <select
+                    value={selectedUnitId}
+                    onChange={(e) => handleUnitChange(e.target.value)}
+                    className="w-full p-3 bg-white border border-gray-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  >
+                    {UNITS_DATA.map(u => (
+                      <option key={u.id} value={u.id}>{u.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-gray-800 block mb-1">Select Topic</label>
+                  <select
+                    value={selectedTopic}
+                    onChange={(e) => setSelectedTopic(e.target.value)}
+                    className="w-full p-3 bg-white border border-gray-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  >
+                    {currentUnit?.topics.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleGeneratePrompt}
+                  className="px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md text-xs flex items-center gap-2"
+                >
+                  <i className="fa-solid fa-wand-magic-sparkles"></i>
+                  Generate FRQ Prompt
+                </button>
+              </div>
+
+              {promptText && (
+                <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                  <span className="text-[10px] font-bold uppercase text-slate-500 block mb-1">Generated Prompt</span>
+                  <p className="text-xs text-slate-700 whitespace-pre-line">{promptText}</p>
+                </div>
+              )}
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 space-y-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-gray-800 flex items-center gap-1.5">
+                  <i className="fa-solid fa-pen-to-square text-emerald-600"></i>
+                  Your Response
+                </label>
+                <span className="text-[11px] text-gray-400">
+                  {studentResponse.trim().split(/\s+/).filter(Boolean).length} words
+                </span>
+              </div>
+
+              <textarea
+                value={studentResponse}
+                onChange={(e) => setStudentResponse(e.target.value)}
+                placeholder="Write your complete FRQ response here..."
+                className="w-full h-32 p-3.5 bg-slate-50 border border-gray-200 rounded-xl text-xs leading-relaxed focus:bg-white focus:ring-2 focus:ring-emerald-500 outline-none resize-y"
+              ></textarea>
+
+              {error && (
+                <p className="text-xs text-rose-600 font-bold">{error}</p>
+              )}
+
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSubmit}
+                  disabled={isLoading}
+                  className="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow text-xs flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isLoading ? (
+                    <>
+                      <i className="fa-solid fa-spinner animate-spin"></i> Evaluating...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-paper-plane"></i> Submit for Feedback
+                    </>
+                  )}
+                </button>
+              </div>
+
+              {feedback && (
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-xs font-bold text-gray-900">Chief Reader Assessment</span>
+                    <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                      {feedback.pointsEarned} / {feedback.maxPoints} Points
+                    </span>
+                  </div>
+
+                  {feedback.socraticHint && (
+                    <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 space-y-1">
+                      <span className="font-bold block flex items-center gap-1">
+                        <i className="fa-solid fa-lightbulb"></i> Guiding Hint:
+                      </span>
+                      <p>{feedback.socraticHint}</p>
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl">
+                      <span className="font-bold text-emerald-900 block mb-1">Strengths:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-emerald-800 text-[11px]">
+                        {feedback.strengths?.map((s, i) => <li key={i}>{s}</li>)}
+                      </ul>
+                    </div>
+                    <div className="p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                      <span className="font-bold text-rose-900 block mb-1">To Refine:</span>
+                      <ul className="list-disc list-inside space-y-0.5 text-rose-800 text-[11px]">
+                        {feedback.misconceptions?.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
+</body>
+</html>

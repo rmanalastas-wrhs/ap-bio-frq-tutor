@@ -157,8 +157,8 @@
 
       // ================================
       // SCORING CRITERIA (1 point per verb)
-      // ================================
-      function generateScoringCriteria(verb) {
+      // ================================      
+    function generateScoringCriteria(verb) {
         const base = {
           "Calculate": "Correct calculation with appropriate setup, steps, and units.",
           "Construct/Draw": "Accurate diagram/graph that correctly represents the relationship or data.",
@@ -178,27 +178,6 @@
           criteria: base[verb] || base["Explain"],
           points: 1
         }];
-      }
-
-      // ================================
-      // PROMPT TEXT BY VERB
-      // ================================      
-      function generatePromptText(unit, topic, verb) {
-        const prompts = {
-          "Calculate": `In the context of ${topic}, a researcher measures [variable] and finds [data]. Calculate the [quantity] and show all steps, including units.`,
-          "Construct/Draw": `Using data from an experiment on ${topic}, construct a graph showing the relationship between [independent variable] and [dependent variable]. Label axes and indicate trends.`,
-          "Describe": `Describe the key characteristics of ${topic} and how they relate to ${unit}. Include specific biological features.`,
-          "Determine": `Based on the data provided for ${topic}, determine whether [hypothesis] is supported. Justify your conclusion.`,
-          "Evaluate": `Evaluate the significance of ${topic} in maintaining homeostasis. Consider both benefits and limitations.`,
-          "Explain": `Explain how ${topic} functions within ${unit}. Include the mechanism and why it matters biologically.`,
-          "Identify": `Identify two factors that affect ${topic} and briefly state how each factor influences the process.`,
-          "Justify": `A student claims that ${topic} is the most important factor in ${unit}. Justify or refute this claim using evidence.`,
-          "Make a Claim": `Make a claim about how changing [condition] would affect ${topic}. Base your claim on biological principles.`,
-          "Predict": `Predict what would happen to [process] if [condition] were altered in the context of ${topic}. Explain your reasoning.`,
-          "Support a Claim": `A scientist claims that ${topic} directly affects [outcome]. Support this claim with specific evidence and reasoning.`
-        };
-
-        return prompts[verb] || prompts["Explain"];
       }
 
       // ================================
@@ -228,25 +207,40 @@
           });
         }
 
-        function generatePrompt() {
+        async function generatePrompt() {
           if (!selectedUnit || !selectedTopic || selectedVerbs.length === 0) return;
 
-          if (selectedVerbs.length === 1) {
-            const verb = selectedVerbs[0];
-            const promptText = generatePromptText(selectedUnit, selectedTopic, verb);
-            setGeneratedPrompt(promptText);
-          } else {
-            const parts = selectedVerbs.map((verb, index) => {
-              const letter = String.fromCharCode(97 + index); // a, b, c...
-              const baseText = generatePromptText(selectedUnit, selectedTopic, verb);
-              return `(${letter}) ${baseText}`;
-            });
-            setGeneratedPrompt(parts.join("\n\n"));
-          }
-
+          setLoading(true);
+          setGeneratedPrompt("");
           setStudentResponse("");
           setFeedback(null);
-          setPromptGenerated(true);
+          setPromptGenerated(false);
+
+          const context = `${selectedUnit} - ${selectedTopic}`;
+
+          try {
+            const res = await fetch(BACKEND_URL, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                mode: "generatePrompt",
+                context,
+                verbs: selectedVerbs
+              })
+            });
+
+            const data = await res.json();
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            setGeneratedPrompt(data.promptText || "No prompt generated.");
+            setPromptGenerated(true);
+          } catch (err) {
+            alert("Error generating prompt: " + err.message);
+          } finally {
+            setLoading(false);
+          }
         }
 
         function resetTutor() {
@@ -342,15 +336,6 @@
             generateScoringCriteria(verb)
           );
 
-          const prompts = selectedVerbs.map((verb, index) => {
-            const letter = String.fromCharCode(97 + index);
-            const baseText = generatePromptText(selectedUnit, selectedTopic, verb);
-            return {
-              verb,
-              text: `(${letter}) ${baseText}`
-            };
-          });
-
           const context = `${selectedUnit} - ${selectedTopic}`;
 
           try {
@@ -358,8 +343,10 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
+                mode: "evaluateResponse",
                 context,
-                prompts,
+                verbs: selectedVerbs,
+                promptText: generatedPrompt,
                 scoringCriteria: allCriteria,
                 studentResponse: studentResponse.trim()
               })
@@ -480,10 +467,10 @@
               <div className="flex flex-wrap gap-2 mb-4">
                 <button
                   onClick={generatePrompt}
-                  disabled={!selectedUnit || !selectedTopic || selectedVerbs.length === 0}
+                  disabled={!selectedUnit || !selectedTopic || selectedVerbs.length === 0 || loading}
                   className="btn px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded disabled:bg-gray-400 disabled:cursor-not-allowed"
                 >
-                  Generate FRQ Prompt
+                  {loading && !promptGenerated ? "Generating..." : "Generate New FRQ"}
                 </button>
 
                 <button
